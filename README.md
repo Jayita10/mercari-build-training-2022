@@ -24,7 +24,7 @@ The following icons indicate pointers for
 ## Tasks
 
 - [x] **STEP1** Git ([JA](document/step1.ja.md)/[EN](document/step1.en.md))
-- [ ] **STEP2** Setup environment ([JA](document/step2.ja.md)
+- [x] **STEP2** Setup environment ([JA](document/step2.ja.md)
   /[EN](document/step2.en.md))
 - [ ] **STEP3** Develop API ([JA](document/step3.ja.md)
   /[EN](document/step3.en.md))
