@@ -1,9 +1,13 @@
 import os
 import logging
 import pathlib
+import json
 from fastapi import FastAPI, Form, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+
+
+FILENAME = "items.json"
 
 app = FastAPI()
 logger = logging.getLogger("uvicorn")
@@ -18,12 +22,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/")
 def root():
     return {"message": "Hello, world!"}
 
+@app.get("/items")
+def get_items():
+    return load_file_to_json()
+
 @app.post("/items")
-def add_item(name: str = Form(...)):
+def add_item(name: str = Form(...), category: str = Form(...)):
+    write_json({"name": name, "category": category})
     logger.info(f"Receive item: {name}")
     return {"message": f"item received: {name}"}
 
@@ -40,3 +50,15 @@ async def get_image(image_filename):
         image = images / "default.jpg"
 
     return FileResponse(image)
+
+
+def load_file_to_json():
+    with open(FILENAME, 'r') as file:
+        file_data = json.load(file)
+        return file_data
+
+def write_json(new_data):
+        file_data = load_file_to_json()
+        with open(FILENAME, 'w') as file:
+            file_data["items"].append(new_data)
+            json.dump(file_data, file)
