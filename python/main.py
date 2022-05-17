@@ -1,13 +1,13 @@
 import os
 import logging
 import pathlib
-import json
+import sqlite3
 from fastapi import FastAPI, Form, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 
-FILENAME = "items.json"
+DATABASE_NAME = "../db/mercari.sqlite3"
 
 app = FastAPI()
 logger = logging.getLogger("uvicorn")
@@ -22,6 +22,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+def database_connect():
+    conn = sqlite3.connect(DATABASE_NAME)
+    cur = conn.cursor()
+    with open('../db/items.db') as schema_file:
+        schema = schema_file.read()
+        cur.execute(f'''{schema}''')
+        conn.commit()
+        logger.info("Database initialization successful!")
+        conn.close()
+
 
 @app.get("/")
 def root():
@@ -29,11 +40,21 @@ def root():
 
 @app.get("/items")
 def get_items():
-    return load_file_to_json()
+    conn = sqlite3.connect(DATABASE_NAME)
+    cur = conn.cursor()
+    cur.execute('''SELECT * FROM items''')
+    items = cur.fetchall()
+    conn.close()
+    logger.info("Items get successfully!")
+    return items
 
 @app.post("/items")
 def add_item(name: str = Form(...), category: str = Form(...)):
-    write_json({"name": name, "category": category})
+    conn = sqlite3.connect(DATABASE_NAME)
+    cur = conn.cursor()
+    cur.execute('''INSERT INTO items(name, category) VALUES (?, ?)''', (name, category))
+    conn.commit()
+    conn.close()
     logger.info(f"Receive item: {name}")
     return {"message": f"item received: {name}"}
 
@@ -51,14 +72,3 @@ async def get_image(image_filename):
 
     return FileResponse(image)
 
-
-def load_file_to_json():
-    with open(FILENAME, 'r') as file:
-        file_data = json.load(file)
-        return file_data
-
-def write_json(new_data):
-        file_data = load_file_to_json()
-        with open(FILENAME, 'w') as file:
-            file_data["items"].append(new_data)
-            json.dump(file_data, file)
