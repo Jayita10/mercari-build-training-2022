@@ -1,6 +1,8 @@
+import keyword
 import os
 import logging
 import pathlib
+import json
 import sqlite3
 from fastapi import FastAPI, Form, HTTPException
 from fastapi.responses import FileResponse
@@ -41,12 +43,28 @@ def root():
 @app.get("/items")
 def get_items():
     conn = sqlite3.connect(DATABASE_NAME)
+    conn.row_factory = sqlite3.Row
     cur = conn.cursor()
-    cur.execute('''SELECT * FROM items''')
+    cur.execute('''SELECT name, category FROM items''')
     items = cur.fetchall()
+    item_list = [dict(item) for item in items]
+    items_json = {"items": item_list}
     conn.close()
     logger.info("Items get successfully!")
-    return items
+    return items_json
+
+@app.get("/search")
+def search_items(keyword: str):
+    conn = sqlite3.connect(DATABASE_NAME)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    cur.execute('''SELECT name, category FROM items WHERE name LIKE (?)''', (f"%{keyword}%", ))
+    items = cur.fetchall()
+    item_list = [dict(item) for item in items]
+    items_json = {"items": item_list}
+    conn.close()
+    logger.info(f"Get items with name containing {keyword}")
+    return items_json
 
 @app.post("/items")
 def add_item(name: str = Form(...), category: str = Form(...)):
