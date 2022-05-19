@@ -4,7 +4,8 @@ import logging
 import pathlib
 import json
 import sqlite3
-from fastapi import FastAPI, Form, HTTPException
+import hashlib
+from fastapi import FastAPI, File, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -67,14 +68,24 @@ def search_items(keyword: str):
     return items_json
 
 @app.post("/items")
-def add_item(name: str = Form(...), category: str = Form(...)):
+def add_item(name: bytes = File(...), category: bytes = File(...), image: bytes = File(...)):
     conn = sqlite3.connect(DATABASE_NAME)
     cur = conn.cursor()
-    cur.execute('''INSERT INTO items(name, category) VALUES (?, ?)''', (name, category))
+
+    # decode file to string
+    name_str = name.decode('utf-8')
+    category_str = category.decode('utf-8')
+
+    # encode uploaded image
+    hash = encoded_image(image)
+    cur.execute('''INSERT INTO items
+                (name, category, image) VALUES (?, ?, ?)''', (name_str, category_str, hash))
     conn.commit()
     conn.close()
-    logger.info(f"Receive item: {name}")
-    return {"message": f"item received: {name}"}
+
+    logger.info(f"item received: {name_str}, {category_str}, {hash}")
+    open
+    return {"message": f"item received: {name_str}, {category_str}, {hash}"}
 
 @app.get("/image/{image_filename}")
 async def get_image(image_filename):
@@ -90,3 +101,9 @@ async def get_image(image_filename):
 
     return FileResponse(image)
 
+def encoded_image(image):
+    hash_image = hashlib.sha256(image).hexdigest() + ".jpg"
+
+    with open("images/" + hash_image, "wb") as file:
+        file.write(image)
+    return hash_image
