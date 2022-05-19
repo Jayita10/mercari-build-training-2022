@@ -31,7 +31,7 @@ def database_connect():
     cur = conn.cursor()
     with open('../db/items.db') as schema_file:
         schema = schema_file.read()
-        cur.execute(f'''{schema}''')
+        cur.executescript(f'''{schema}''')
         conn.commit()
         logger.info("Database initialization successful!")
         conn.close()
@@ -46,7 +46,7 @@ def get_items():
     conn = sqlite3.connect(DATABASE_NAME)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
-    cur.execute('''SELECT name, category FROM items''')
+    cur.execute('''SELECT items.name, category.name as category, items.image FROM items INNER JOIN category ON category.id = items.category_id''')
     items = cur.fetchall()
     item_list = [dict(item) for item in items]
     items_json = {"items": item_list}
@@ -59,7 +59,7 @@ def search_items(keyword: str):
     conn = sqlite3.connect(DATABASE_NAME)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
-    cur.execute('''SELECT name, category FROM items WHERE name LIKE (?)''', (f"%{keyword}%", ))
+    cur.execute('''SELECT items.name, category.name as category, items.image FROM items INNER JOIN category ON category.id = items.category_id WHERE items.name LIKE (?)''', (f"%{keyword}%", ))
     items = cur.fetchall()
     item_list = [dict(item) for item in items]
     items_json = {"items": item_list}
@@ -72,7 +72,7 @@ def get_item(item_id):
     conn = sqlite3.connect(DATABASE_NAME)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
-    cur.execute('''SELECT name, category, image FROM items WHERE id = (?)''', (item_id, ))
+    cur.execute('''SELECT items.name, category.name as category, items.image FROM items INNER JOIN category ON category.id = items.category_id WHERE items.id = (?)''', (item_id, ))
     conn.commit()
     #conn.close()
     logger.info(f"Item fetch successful from item id")
@@ -90,8 +90,12 @@ def add_item(name: bytes = File(...), category: bytes = File(...), image: bytes 
 
     # encode uploaded image
     hash = encoded_image(image)
+    cur.execute('''INSERT OR IGNORE INTO category
+                (name) VALUES (?)''', (category_str, ))
+    cur.execute('''SELECT id FROM category WHERE name = (?)''', (category_str, ))
+    category_id = cur.fetchone()[0]
     cur.execute('''INSERT INTO items
-                (name, category, image) VALUES (?, ?, ?)''', (name_str, category_str, hash))
+                (name, category_id, image) VALUES (?,?,?)''', (name_str, category_id, hash))
     conn.commit()
     conn.close()
 
